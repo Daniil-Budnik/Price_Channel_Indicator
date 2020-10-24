@@ -1,1 +1,1 @@
-# Price_Channel_Indicator
+# Price Channel Indicator
