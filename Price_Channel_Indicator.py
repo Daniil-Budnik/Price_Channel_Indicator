@@ -33,11 +33,14 @@ def Indicator_Price_Channels(Stock,Start,End):
 def Operator(Data,PW = False):
 
     # Проверка от левых данных
-    Ys = []
-    for i in Data: 
-        if(mt.isnan(i) != True):
-            Ys.append(float(i))
+    Xs,Ys,iX,dX,_LN = [],[], np.pi * (-1), (np.pi * 2) / len(Data), 0
 
+    # Исключение данных NAN (несуществующих значений)
+    for i in Data: 
+        if(mt.isnan(i) != True): 
+            Xs.append(iX)
+            Ys.append(float(i))
+        iX += dX
     # Масштабируем сигнал от 0 до Pi
     Xpi = np.linspace(0,np.pi,len(Ys))
 
@@ -58,30 +61,38 @@ def Operator(Data,PW = False):
     def Ln(f, x, n = 100):
         LN = 0
         for k in range(1, n): LN += (( ((-1)**k) * np.sin(n*x)) / (n * x - k * np.pi)) * f((k * np.pi) / n)
-        return LN
+        global _LN
+        if(np.isinf(LN)): LN = _LN 
+        _LN = LN
+        return _LN
 
     # Функция модификатор (5.42)
     def ATh(F,x):
         AT = 0 
         for k in range(1,len(Xpi)-1): AT +=  S(k,x) * (F(Xpi[k+1]) + ( 2 * F(Xpi[k]) ) + F(Xpi[k-1]))
-        return  0.25 * AT 
+        global _LN
+        if(np.isinf(AT)): AT = _LN 
+        _LN = AT 
+        return  _LN * (1/4)
 
     # Возращаем данные
-    if(PW): return {"X" : Xpi, "Y" : [Ln(F,x) for x in Xpi]}
-    else:   return {"X" : Xpi, "Y" : [ATh(F,x) for x in Xpi]}
+    if(PW): return {"X" : Xs, "Y" : [Ln(F,x) for x in Xpi]}
+    else:   return {"X" : Xs, "Y" : [ATh(F,x) for x in Xpi]}
 
 def Start():
 
     # Получаем данные индикатора
-    Data = Indicator_Price_Channels('FB', '1/1/2016', '12/31/2016')
+    Data = Indicator_Price_Channels('FB', '6/1/2019', '6/1/2020')
 
     # Рисуем данные индикатора
     plt.subplot(3,1,1)
     plt.title("Price Channels")
+
     plt.plot(Data['4WH'],label="4WH")
     plt.plot(Data['4WL'],label="4WL")
     plt.plot(Data['50 sma'],label="50 sma")
     plt.plot(Data['Close'],label="Close")
+
     plt.legend()
 
     # Рисуем данные с модификаторм по формуле 4.1
@@ -105,7 +116,7 @@ def Start():
     # Рисуем данные с модификаторм по формуле 5.42
     plt.subplot(3,1,3)
     plt.title("Модификация по формуле 5.42")
-
+    
     DATA = Operator(Data['4WH'])
     plt.plot(DATA["X"],DATA["Y"],label="4WH")
     
@@ -117,7 +128,7 @@ def Start():
     
     DATA = Operator(Data['Close'])
     plt.plot(DATA["X"],DATA["Y"],label="Close")
-
+    
     plt.legend()
 
     # Вывести график
